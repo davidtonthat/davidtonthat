@@ -1,0 +1,111 @@
+<!-- File: FamilyTrees/FamilyTrees.html -->
+<html ng-app="familyTrees">
+<head><title>Family Trees App</title>
+    <link rel="stylesheet" href="styles/bootstrap.css">
+    <link rel="stylesheet" href="styles/main.css">
+
+    <script src="scripts/vendors/angular.js"></script>
+    <script src="scripts/FamilyTreesApp.js"></script>
+</head>
+
+<body ng-controller="MainCtrl as mainCtrl">
+  <form ng-submit="mainCtrl.login()" name="myForm">
+    <div class="login-container"
+         ng-hide="mainCtrl.isLoggedIn">
+      <div class="card login-card login-form">
+        <ng-form name="loginForm"
+              class="form-horizontal"
+              role="form">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text"
+                   name="uname"
+                   placeholder="User Name"
+                   class="form-control"
+                   ng-model="mainCtrl.user.username"
+                   required>
+            <span ng-show="myForm.loginForm.uname.$error.required">
+              User name is a required field.
+            </span>
+            <span id="usenameErrorMsg" class="common-font"></span>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password"
+                   name="pwd"
+                   placeholder="Password"
+                   class="form-control"
+                   ng-model="mainCtrl.user.password"
+                   required>
+            <span ng-show="myForm.loginForm.pwd.$error.required">
+              Password is required.
+            </span>
+            <span id="pwdErrorMsg" class="common-font"></span>
+          </div>
+          <input type="submit"
+                 class="btn btn-success btn-lg"
+                 value="Log In"
+                 ng-disabled="myForm.loginForm.$invalid">
+        </ng-form>
+      </div>
+    </div>
+    <div class="menu-heading-container" ng-show="mainCtrl.isLoggedIn">
+        <button ng-click="mainCtrl.open('familyTree')">
+                Family Tree</button>
+        <button ng-click="mainCtrl.open('configuration')">
+                Configuration</button>
+        <button ng-click="mainCtrl.open('about')">
+                About</button>
+    </div>
+    <div ng-show="myForm.$valid" ng-switch on="mainCtrl.tab">
+        <div class="topic-heading" ng-switch-when="familyTree">
+          <h4>Select a family to display</h3>
+          <div class="common-font">
+            <select ng-model="mainCtrl.selectedFamilyID"
+                    ng-options="f.id as f.name for f in mainCtrl.families">
+            </select>
+            Selected Family ID : {{mainCtrl.selectedFamilyID}}
+            <span class="button-container">
+              <button ng-click="mainCtrl.displayTree()">
+                      Display Tree</button>
+            </span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="treeCanvas" width="1400" height="650">
+            </canvas>
+          </div>
+        </div>
+        <div class="topic-heading" ng-switch-when="configuration">
+          <h4>Enter new families & other settings</h3>
+          <table frame="border">
+            <colgroup>
+              <col span="1" width="80">
+              <col span="1" width="150">
+              <col span="1" width="250">
+            </colgroup>
+            <tr>
+              <td>FamilyID</td>
+              <td>Name</td>
+              <td>Description</td>
+            </tr>
+            <tr ng-repeat-start="family in mainCtrl.families">
+              <td>{{family.id}}</td>
+              <td>{{family.name}}</td>
+              <td>{{family.description}}</td>
+            </tr>
+            <tr ng-repeat-end>
+          </table>
+          <div class="common-font">
+          </div>
+        </div>
+        <div class="topic-heading" ng-switch-when="about">
+          <div class="about-container">
+            <p>This is prototype of a Family Trees Web app that displays a tree structure of a selected family.</p>
+            <br/>
+            <p>Copyright © 2022 David D. Tonthat</p>
+          </div>
+        </div>
+    </div>
+  </form>
+</body>
+</html>
