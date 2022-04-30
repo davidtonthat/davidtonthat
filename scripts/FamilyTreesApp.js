@@ -1,48 +1,32 @@
 // File: FamilyTrees/FamilyTreesApp.js
 
-var families = [
-  {id: 1, name: 'Smith', description: 'Most common English name'},
-  {id: 2, name: 'Baker', description: 'Another common English name'},
-  {id: 3, name: 'Wang', description: 'Most common Chinese name'},
-  {id: 4, name: 'Hutchinson', description: 'Made up name for app testing'},
-];
-
-var members = [
-  {id: 1, familyId: 1, fullName: 'Adam Benjamin Smith', spouse: 'Eve Frances Smith', parentID: 0},
-  {id: 2, familyId: 1, fullName: 'Charles Derek Smith', spouse: 'Elaine Florence Smith', parentID: 1},
-  {id: 3, familyId: 1, fullName: 'Eleanor Felicity Smith', spouse: 'Gavin Henry Wilson', parentID: 1},
-  {id: 4, familyId: 1, fullName: 'Gareth Harold Smith', spouse: 'Iris Jane Higginbotham',parentID: 1},
-  {id: 5, familyId: 1, fullName: 'Ian Jeremy Smith',    spouse: 'Kay Laura Winterburns', parentID: 2},
-  {id: 6, familyId: 1, fullName: 'Kelvin Lance Wilson', spouse: 'Michelle Nora Prague',  parentID: 3},
-  {id: 7, familyId: 1, fullName: 'Michael Norman Wilson',spouse: 'Olivia Patience Smith',parentID: 3},
-  {id: 8, familyId: 1, fullName: 'Oliver Patrick Smith', spouse: 'Queen Rachel Edwards', parentID: 4},
-  {id: 9, familyId: 1, fullName: 'Quebec Rebecca Smith', spouse: 'Steven Trevor McQueen',parentID: 4},
-  {id:10, familyId: 1, fullName: 'Simon Travis Smith',   spouse: 'Ursula Vanessa Rubens',parentID: 4},
-
-  {id:11, familyId: 2, fullName: 'John Kelvin Baker', spouse: 'Emily Gwen Willoughby', parentID: -1},
-  {id:12, familyId: 4, fullName: 'Clifford Derek Hutchinson', spouse: 'Eleanor Daphne Simmons', parentID: -2},
-  {id:13, familyId: 4, fullName: 'Ellen Fiona Hutchinson',    spouse: 'Gavin Harold Smiley', parentID: 12},
-  {id:14, familyId: 4, fullName: 'George Horatio Hutchinson', spouse: 'Iris Freda Halliday', parentID: 12}
-];
-
 var prevFamilyID = 0;
 var focalPointsMap = new Map();
 
 angular.module('familyTrees', [])
-  .controller('MainCtrl', [function() {
+  .controller('MainCtrl', ['$http', function($http) {
     var self = this;
+    self.user = {};
+    self.members = [];
+    self.families = [];
     self.tab = 'first';
     self.isLoggedIn = false;
-    self.families = families;
     self.selectedFamilyID = 1;
 
+    $http.get('/api/families').then(function(response) {
+      self.families = response.data;
+      }, function(errResponse) {
+      console.error('Error while fetching families from server.');
+    });
     self.open = function(tab) {
       self.tab = tab;
       prevFamilyID = 0;
     };
     self.login = function() {
-      console.log('User: ', self.user);
-      self.isLoggedIn = (self.user.username === 'guest') && (self.user.password === 'password');
+      $http.post('/api/login', self.user).then(
+        function(resp) {
+          self.isLoggedIn = resp.data.isLoggedIn;
+      });
       if (!self.isLoggedIn) {
         let invalid = (self.user.username !== 'guest');
         document.getElementById('usenameErrorMsg').innerHTML = invalid ? 'Incorrect Username' : '';
@@ -53,8 +37,13 @@ angular.module('familyTrees', [])
     self.displayTree = function() {
       if (self.selectedFamilyID === prevFamilyID) return;
       focalPointsMap.clear();
-      drawTree(setUpHierarchy(members.filter(m => m.familyId === self.selectedFamilyID)));
-      prevFamilyID = self.selectedFamilyID;
+      $http.get('/api/members').then(function(response) {
+        self.members = response.data;
+        drawTree(setUpHierarchy(self.members.filter(m => m.familyId === self.selectedFamilyID)));
+        prevFamilyID = self.selectedFamilyID;
+        }, function(errResponse) {
+        console.error('Error while fetching family members from server.');
+      });
     }
   }]);
 
@@ -86,24 +75,16 @@ function drawTree(generations) {
   grContext.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   for (let generation of generations) {
-    x = calcStart(generation);
-    for (let person of generation) {
-      grContext.fillText(person.fullName + SPACES + person.spouse, x, y);
-      if (focalPointsMap.has(person.id)) {
-          saveParentsFocus(person, x, y);
-          let pt = focalPointsMap.get(person.id);
-          grContext.fillText('.', pt.x, pt.y);
-        }
-      x += widthOfCouple(person);
-    }
-    y += LEADING;
-  }
-  x = 0, y = LEADING;
-  for (let generation of generations) {
     let cousinFocuses  = new Map();
     let siblingFocuses = new Array();
     x = calcStart(generation);
     for (let [idx, person] of generation.entries()) {
+      grContext.fillText(person.fullName + SPACES + person.spouse, x, y);
+      if (focalPointsMap.has(person.id)) {
+        saveParentsFocus(person, x, y);
+        let pt = focalPointsMap.get(person.id);
+        grContext.fillText('.', pt.x, pt.y);
+      }
       if (person.parentID > 0) {
         let {x1, y1} = drawVertLineAbove(person, x, y);
         siblingFocuses.push({"x": x1, "y": y1});
@@ -136,9 +117,15 @@ function drawTree(generations) {
     return grContext.measureText(text).width + GAP;
   }
   function calcStart(generation) {
-    let width = 0;
-    for (let person of generation) {
+    let width = 0, person = null;
+    for (let idx = 0; idx < generation.length; idx++) {
+      person = generation[idx];
       width += widthOfCouple(person);
+      if ((idx + 1 <= generation.length - 1) && (person.parentID !== generation[idx + 1].parentID)) break;
+    }
+    if (person.parentID > 0) {
+      let ref = focalPointsMap.get(person.parentID);
+      return ref.x - width/2;
     }
     return (CANVAS_WIDTH - width)/2;
   }
