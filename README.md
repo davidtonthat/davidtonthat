@@ -5,7 +5,20 @@ This is a prototype of a Web app that displays the hierarchy tree of a selected 
 
 This prototype is for demonstration purpose and thus the family members data is hard-coded i.e. there is no backing Web server.
 
-It is intended that the prototype will be developed into a full-fledged Web app with a Node server that will serve actual family data.
+It is intended that the prototype will be developed into a full-fledged Web app with a remote Node server that will serve actual family data. At present NodeJS must have been installed on the local machine.
+
+*Steps to serve files locally*
+
+```
+git clone https://github.com/davidtonthat/familytrees.git
+cd familytrees
+npm init -y
+npm install
+
+node server.js
+```
+
+Connect browser to http://localhost:8000
 
 *Login credentials*
 
